@@ -24,3 +24,16 @@ async function localize(value){
 const result=await localize(data);
 await fs.writeFile(path.join(root,'content/main.json'),JSON.stringify(result));
 console.log(`Updated public resume and ${downloaded.size} media files`);
+
+const bundlePath=path.join(root,'portfolio.js');
+const bundle=await fs.readFile(bundlePath,'utf8');
+const iconIds=[...bundle.matchAll(/\{id:`([a-z]+)`,label:/g)].map(match=>match[1]);
+if(!iconIds.includes('telegram'))throw new Error('Messenger icon definitions not found');
+await fs.mkdir(path.join(root,'social-icons'),{recursive:true});
+await Promise.all([...new Set(iconIds)].map(async id=>{
+ const svg=await (await get(origin+'/social-icons/'+id+'.svg')).text();
+ if(!/^\s*<svg[\s>]/.test(svg))throw new Error('Invalid messenger SVG: '+id);
+ await fs.writeFile(path.join(root,'social-icons',id+'.svg'),svg);
+}));
+await fs.writeFile(bundlePath,bundle.replaceAll('`/social-icons/`','`./social-icons/`'));
+console.log(`Updated ${new Set(iconIds).size} messenger icons`);
